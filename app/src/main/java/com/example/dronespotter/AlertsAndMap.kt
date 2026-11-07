@@ -57,7 +57,7 @@ fun DroneMap(me: Location?, drones: List<Drone>, radiusM: Float, modifier: Modif
         factory = { c ->
             Configuration.getInstance().apply {
                 load(c, c.getSharedPreferences("osm", 0))
-                userAgentValue = c.packageName
+                userAgentValue = "DroneSpotter/1.0 (uso personal; github.com/sergiodibujos13-web/DroneSpotter)"
                 osmdroidBasePath = c.cacheDir
                 osmdroidTileCache = File(c.cacheDir, "tiles")
             }

@@ -62,7 +62,7 @@ fun DroneMap(me: Location?, drones: List<Drone>, radiusM: Float, modifier: Modif
                 osmdroidTileCache = File(c.cacheDir, "tiles")
             }
             MapView(c).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
+                setTileSource(org.osmdroid.tileprovider.tilesource.XYTileSource("CartoVoyager", 0, 19, 256, ".png", arrayOf("https://a.basemaps.cartocdn.com/rastertiles/voyager/", "https://b.basemaps.cartocdn.com/rastertiles/voyager/")))
                 setMultiTouchControls(true)
                 controller.setZoom(16.0)
             }

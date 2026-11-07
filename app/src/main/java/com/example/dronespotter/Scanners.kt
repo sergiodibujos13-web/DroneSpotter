@@ -100,7 +100,7 @@ class WifiAwareScanner(private val ctx: Context, private val on: OnDrone) {
                 session = s
                 val cfg = SubscribeConfig.Builder()
                     .setServiceName("org.opendroneid.remoteid")
-                    .setSubscribeType(SubscribeConfig.SUBSCRIBE_PASSIVE).build()
+                    .setSubscribeType(SubscribeConfig.SUBSCRIBE_TYPE_PASSIVE).build()
                 s.subscribe(cfg, object : DiscoverySessionCallback() {
                     override fun onServiceDiscovered(
                         peer: PeerHandle, info: ByteArray?, filter: MutableList<ByteArray>?

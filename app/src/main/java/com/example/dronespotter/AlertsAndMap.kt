@@ -13,8 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
 import org.osmdroid.util.GeoPoint
+import org.osmdroid.util.MapTileIndex
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polygon
@@ -49,7 +50,7 @@ class AlertManager(private val ctx: Context) {
     }
 }
 
-/** Mapa OpenStreetMap (sin API key): yo, drones y círculo de alerta. */
+/** Mapa de calles (Esri, sin clave): yo, drones y círculo de alerta. */
 @Composable
 fun DroneMap(me: Location?, drones: List<Drone>, radiusM: Float, modifier: Modifier = Modifier.fillMaxSize()) {
     AndroidView(
@@ -62,7 +63,15 @@ fun DroneMap(me: Location?, drones: List<Drone>, radiusM: Float, modifier: Modif
                 osmdroidTileCache = File(c.cacheDir, "tiles")
             }
             MapView(c).apply {
-                setTileSource(org.osmdroid.tileprovider.tilesource.XYTileSource("CartoVoyager", 0, 19, 256, ".png", arrayOf("https://a.basemaps.cartocdn.com/rastertiles/voyager/", "https://b.basemaps.cartocdn.com/rastertiles/voyager/")))
+                setTileSource(object : OnlineTileSourceBase(
+                    "EsriStreet", 0, 19, 256, "",
+                    arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/")
+                ) {
+                    override fun getTileURLString(pMapTileIndex: Long): String =
+                        baseUrl + MapTileIndex.getZoom(pMapTileIndex) + "/" +
+                            MapTileIndex.getY(pMapTileIndex) + "/" +
+                            MapTileIndex.getX(pMapTileIndex)
+                })
                 setMultiTouchControls(true)
                 controller.setZoom(16.0)
             }

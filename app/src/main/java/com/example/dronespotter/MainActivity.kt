@@ -103,37 +103,44 @@ class MainActivity : ComponentActivity() {
                 Scaffold { pad ->
                     Column(Modifier.padding(pad).padding(12.dp)) {
                         Text("Drone Spotter", style = MaterialTheme.typography.headlineSmall)
-                        if (status.value.isNotEmpty()) Text(status.value, style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.height(8.dp))
-                        Button(onClick = { if (scanning.value) stop() else launcher.launch(perms) }) {
-                            Text(if (scanning.value) "Detener" else "Buscar drones")
-                        }
-                        Text("Alertar a menos de ${threshold.floatValue.toInt()} m")
-                        Slider(
-                            value = threshold.floatValue, onValueChange = { threshold.floatValue = it },
-                            valueRange = 100f..2000f
-                        )
-                        if (near.isNotEmpty()) {
-                            Card(
-                                Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
-                            ) {
-                                Text(
-                                    "⚠ ${near.size} dron(es) dentro del radio de alerta",
-                                    Modifier.padding(10.dp), color = Color(0xFFB71C1C)
-                                )
+                        // En la pestaña Cuaderno se ocultan los controles de detección para dejar sitio
+                        if (tab != 2) {
+                            if (status.value.isNotEmpty()) Text(status.value, style = MaterialTheme.typography.bodySmall)
+                            Spacer(Modifier.height(8.dp))
+                            Button(onClick = { if (scanning.value) stop() else launcher.launch(perms) }) {
+                                Text(if (scanning.value) "Detener" else "Buscar drones")
+                            }
+                            Text("Alertar a menos de ${threshold.floatValue.toInt()} m")
+                            Slider(
+                                value = threshold.floatValue, onValueChange = { threshold.floatValue = it },
+                                valueRange = 100f..2000f
+                            )
+                            if (near.isNotEmpty()) {
+                                Card(
+                                    Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFCDD2))
+                                ) {
+                                    Text(
+                                        "⚠ ${near.size} dron(es) dentro del radio de alerta",
+                                        Modifier.padding(10.dp), color = Color(0xFFB71C1C)
+                                    )
+                                }
                             }
                         }
                         TabRow(selectedTabIndex = tab) {
                             Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Mapa") })
                             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Lista (${list.size})") })
+                            Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Cuaderno") })
                         }
                         Box(Modifier.weight(1f).fillMaxWidth()) {
-                            if (tab == 0) DroneMap(me.value, list, threshold.floatValue)
-                            else LazyColumn(
-                                Modifier.padding(top = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) { items(list.sortedBy { distanceTo(me.value, it) ?: Float.MAX_VALUE }) { DroneCard(it, me.value) } }
+                            when (tab) {
+                                0 -> DroneMap(me.value, list, threshold.floatValue)
+                                1 -> LazyColumn(
+                                    Modifier.padding(top = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) { items(list.sortedBy { distanceTo(me.value, it) ?: Float.MAX_VALUE }) { DroneCard(it, me.value) } }
+                                else -> CuadernoTab()
+                            }
                         }
                     }
                 }

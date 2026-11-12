@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12263A">
+<title>Cuaderno de vuelo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --bg:#EAF0F3; --card:#FFFFFF; --ink:#12263A; --muted:#5B6E7E; --line:#D3DDE3;
+  --ok:#0B7A5A; --warn:#B86E00; --bad:#B3261E; --accent:#12263A;
+  --ok-bg:#DDF1E9; --warn-bg:#FBEBCF; --bad-bg:#F8DDDA;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0E1A26; --card:#16293A; --ink:#E8EEF2; --muted:#9BAEBD; --line:#274055;
+    --ok:#52D1A4; --warn:#F0B454; --bad:#FF8A80; --accent:#E8EEF2;
+    --ok-bg:#12372D; --warn-bg:#3B2D10; --bad-bg:#40201E; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,sans-serif;font-size:16px;line-height:1.4}
+body{padding:env(safe-area-inset-top,0) 0 calc(env(safe-area-inset-bottom,0) + 16px)}
+header{padding:16px 16px 0}
+h1{font:700 28px 'Barlow Condensed',sans-serif;margin:0;letter-spacing:.2px}
+nav{display:flex;gap:6px;padding:12px 16px;position:sticky;top:0;background:var(--bg);z-index:5}
+nav button{flex:1;padding:10px 6px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font:600 15px Barlow,sans-serif}
+nav button[aria-selected="true"]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #3B8EEA;outline-offset:2px}
+main{padding:0 16px}
+section[hidden]{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.verdict{border-radius:14px;padding:16px;margin-bottom:12px}
+.verdict.ok{background:var(--ok-bg);color:var(--ok)}
+.verdict.warn{background:var(--warn-bg);color:var(--warn)}
+.verdict.bad{background:var(--bad-bg);color:var(--bad)}
+.verdict .big{font:700 34px/1.05 'Barlow Condensed',sans-serif}
+.verdict p{margin:6px 0 0;color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat .v{font:700 26px 'Barlow Condensed',sans-serif}
+.stat .l{font-size:13px;color:var(--muted)}
+.hours{display:flex;gap:6px;align-items:flex-end;height:120px;overflow-x:auto;padding-bottom:2px}
+.hour{flex:1 0 38px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;font-size:12px;color:var(--muted)}
+.hour .bar{width:100%;border-radius:6px 6px 0 0;min-height:6px}
+.hour b{color:var(--ink);font:700 15px 'Barlow Condensed',sans-serif}
+h2{font:700 20px 'Barlow Condensed',sans-serif;margin:0 0 8px}
+label{display:block;font-size:14px;font-weight:600;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:16px Barlow,sans-serif}
+textarea{min-height:64px;resize:vertical}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.btn{padding:12px 14px;border:0;border-radius:10px;background:var(--accent);color:var(--bg);font:600 16px Barlow,sans-serif;width:100%;margin-top:12px}
+.btn.sec{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.small{width:auto;padding:8px 12px;font-size:14px;margin:0}
+.item{border-top:1px solid var(--line);padding:10px 0;display:flex;gap:10px;justify-content:space-between;align-items:flex-start}
+.item:first-child{border-top:0}
+.item .t{font-weight:600}
+.item .m{font-size:13px;color:var(--muted)}
+.empty{color:var(--muted);padding:6px 0}
+#map{height:340px;border-radius:14px;border:1px solid var(--line);margin-bottom:12px}
+a{color:inherit}
+.note{font-size:13px;color:var(--muted)}
+.err{color:var(--bad);font-weight:600}
+</style>
+</head>
+<body>
+<header><h1>Cuaderno de vuelo</h1></header>
+<nav role="tablist" aria-label="Secciones">
+  <button role="tab" id="t-hoy" aria-selected="true" data-tab="hoy">Hoy vuelo</button>
+  <button role="tab" id="t-diario" aria-selected="false" data-tab="diario">Diario</button>
+  <button role="tab" id="t-spots" aria-selected="false" data-tab="spots">Spots</button>
+</nav>
+<main>
+
+<section id="hoy" aria-labelledby="t-hoy">
+  <div id="hoy-body"><div class="card">Buscando tu ubicación…</div></div>
+  <button class="btn sec" id="refrescar">Actualizar</button>
+</section>
+
+<section id="diario" aria-labelledby="t-diario" hidden>
+  <div class="card">
+    <h2>Nuevo vuelo</h2>
+    <label for="d-fecha">Fecha y hora</label>
+    <input type="datetime-local" id="d-fecha">
+    <label for="d-lugar">Lugar</label>
+    <div class="row">
+      <input type="text" id="d-lugar" placeholder="Ej. Pantano, huerto, plaza">
+      <button class="btn sec small" id="d-gps" type="button" style="flex:0 0 auto">Mi posición</button>
+    </div>
+    <div class="row">
+      <div><label for="d-dron">Dron</label>
+        <select id="d-dron"><option>DJI Mini 2</option><option>DJI Neo 2</option><option>Otro</option></select></div>
+      <div><label for="d-min">Minutos</label><input type="number" id="d-min" min="1" max="60" inputmode="numeric" placeholder="15"></div>
+    </div>
+    <label for="d-notas">Notas</label>
+    <textarea id="d-notas" placeholder="Viento, batería, qué grabaste…"></textarea>
+    <button class="btn" id="d-guardar">Guardar vuelo</button>
+  </div>
+  <div class="card">
+    <h2>Mis vuelos</h2>
+    <div id="d-resumen" class="note"></div>
+    <div id="d-lista"></div>
+    <button class="btn sec" id="d-csv">Descargar CSV</button>
+  </div>
+</section>
+
+<section id="spots" aria-labelledby="t-spots" hidden>
+  <div id="map" role="application" aria-label="Mapa de spots"></div>
+  <div class="card">
+    <h2>Nuevo spot</h2>
+    <p class="note" id="s-ayuda">Toca el mapa para marcar el sitio, o usa tu posición.</p>
+    <label for="s-nombre">Nombre</label>
+    <input type="text" id="s-nombre" placeholder="Ej. Mirador del pantano">
+    <label for="s-nota">Nota</label>
+    <textarea id="s-nota" placeholder="Mejor hora, acceso, qué se ve…"></textarea>
+    <div class="row">
+      <button class="btn sec" id="s-gps" type="button">Usar mi posición</button>
+      <button class="btn" id="s-guardar" type="button">Guardar spot</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Mis spots</h2>
+    <div id="s-lista"></div>
+  </div>
+</section>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  'use strict';
+  // ---------- utilidades ----------
+  function $(id){return document.getElementById(id)}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+  function load(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return []}}
+  function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+  function getPos(){
+    return new Promise(function(res,rej){
+      if(!navigator.geolocation){rej(new Error('Tu navegador no tiene ubicación.'));return}
+      navigator.geolocation.getCurrentPosition(function(p){res({lat:p.coords.latitude,lng:p.coords.longitude})},
+        function(){rej(new Error('No pude obtener tu ubicación. Activa el permiso de ubicación y pulsa Actualizar.'))},
+        {enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+    });
+  }
+  function nowLocalInput(){
+    var d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+  }
+  function fmtFecha(v){
+    var d=new Date(v); if(isNaN(d))return v;
+    return d.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})+', '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  }
+
+  // ---------- pestañas ----------
+  var map=null;
+  document.querySelectorAll('nav button').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('nav button').forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false')});
+      ['hoy','diario','spots'].forEach(function(t){$(t).hidden=(t!==b.dataset.tab)});
+      if(b.dataset.tab==='spots'){initMap();setTimeout(function(){map&&map.invalidateSize()},50)}
+    });
+  });
+
+  // ---------- HOY VUELO ----------
+  var UMBRAL_BUENO=25, UMBRAL_JUSTO=35; // km/h de racha
+  function colorRacha(g){return g>UMBRAL_JUSTO?'var(--bad)':(g>UMBRAL_BUENO?'var(--warn)':'var(--ok)')}
+  async function cargarHoy(){
+    var body=$('hoy-body');
+    body.innerHTML='<div class="card">Buscando tu ubicación…</div>';
+    try{
+      var p=await getPos();
+      localStorage.setItem('ultimaPos',JSON.stringify(p));
+      body.innerHTML='<div class="card">Consultando el tiempo…</div>';
+      var url='https://api.open-meteo.com/v1/forecast?latitude='+p.lat+'&longitude='+p.lng+
+        '&current=temperature_2m,wind_speed_10m,wind_gusts_10m,precipitation'+
+        '&hourly=wind_gusts_10m,precipitation,precipitation_probability'+
+        '&daily=sunrise,sunset&wind_speed_unit=kmh&timezone=auto&forecast_days=2';
+      var r=await fetch(url); if(!r.ok)throw new Error('El servicio del tiempo no responde. Inténtalo en un rato.');
+      var d=await r.json();
+      pintarHoy(d);
+    }catch(e){
+      body.innerHTML='<div class="card err">'+esc(e.message||'Algo ha fallado.')+'</div>';
+    }
+  }
+  function pintarHoy(d){
+    var cur=d.current, h=d.hourly;
+    var ahora=new Date(cur.time);
+    var idx=0;
+    for(var i=0;i<h.time.length;i++){ if(new Date(h.time[i])<=ahora) idx=i; }
+    var fin=Math.min(idx+8,h.time.length);
+    var ventana=[],lluviaV=0,probV=0,rachaV=cur.wind_gusts_10m;
+    for(var j=idx;j<Math.min(idx+3,h.time.length);j++){
+      rachaV=Math.max(rachaV,h.wind_gusts_10m[j]);
+      lluviaV+=h.precipitation[j]||0;
+      probV=Math.max(probV,h.precipitation_probability[j]||0);
+    }
+    if(cur.precipitation>0)lluviaV+=cur.precipitation;
+    var nivel,titulo,texto;
+    if(lluviaV>0.2||rachaV>UMBRAL_JUSTO){
+      nivel='bad';titulo='Hoy no vueles';
+      texto=lluviaV>0.2?'Se espera lluvia en las próximas horas.':'Las rachas pasan de '+UMBRAL_JUSTO+' km/h.';
+    }else if(rachaV>UMBRAL_BUENO||probV>=50||cur.wind_speed_10m>20){
+      nivel='warn';titulo='Vuelo justo';
+      texto=probV>=50?'Hay bastante probabilidad de lluvia ('+probV+'%).':'Rachas de hasta '+Math.round(rachaV)+' km/h. Vuela cerca y con batería de sobra.';
+    }else{
+      nivel='ok';titulo='Buen día para volar';
+      texto='Viento suave y sin lluvia en las próximas 3 horas.';
+    }
+    var sunrise=new Date(d.daily.sunrise[0]), sunset=new Date(d.daily.sunset[0]);
+    var luz;
+    if(ahora<sunrise){luz='El sol sale a las '+sunrise.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'.';}
+    else if(ahora>sunset){luz='El sol ya se ha puesto. No vueles de noche sin luces y permiso.';}
+    else{
+      var mins=Math.round((sunset-ahora)/60000);
+      var hh=Math.floor(mins/60), mm=mins%60;
+      var dorada=new Date(sunset.getTime()-60*60000);
+      luz='Te quedan '+(hh?hh+' h ':'')+mm+' min de luz (puesta a las '+sunset.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'). '+
+        (ahora<dorada?'Hora dorada desde las '+dorada.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'.':'Ahora es hora dorada.');
+    }
+    var maxG=1;
+    for(var k=idx;k<fin;k++) maxG=Math.max(maxG,h.wind_gusts_10m[k]);
+    var horas='';
+    for(var m=idx;m<fin;m++){
+      var g=h.wind_gusts_10m[m], alto=Math.max(6,Math.round(g/Math.max(maxG,40)*80));
+      var hr=new Date(h.time[m]).toLocaleTimeString('es-ES',{hour:'2-digit'});
+      horas+='<div class="hour"><b>'+Math.round(g)+'</b><div class="bar" style="height:'+alto+'px;background:'+colorRacha(g)+'"></div><span>'+hr+'h</span></div>';
+    }
+    $('hoy-body').innerHTML=
+      '<div class="verdict '+nivel+'"><div class="big">'+titulo+'</div><p>'+esc(texto)+'</p></div>'+
+      '<div class="card grid">'+
+        '<div class="stat"><div class="v">'+Math.round(cur.wind_speed_10m)+' km/h</div><div class="l">Viento</div></div>'+
+        '<div class="stat"><div class="v">'+Math.round(cur.wind_gusts_10m)+' km/h</div><div class="l">Rachas</div></div>'+
+        '<div class="stat"><div class="v">'+Math.round(cur.temperature_2m)+' °C</div><div class="l">Temperatura</div></div>'+
+        '<div class="stat"><div class="v">'+probV+' %</div><div class="l">Lluvia próximas 3 h</div></div>'+
+      '</div>'+
+      '<div class="card"><h2>Rachas por hora (km/h)</h2><div class="hours">'+horas+'</div></div>'+
+      '<div class="card"><h2>Luz</h2><div>'+esc(luz)+'</div></div>'+
+      '<div class="card"><h2>Zonas restringidas</h2><div class="note">Antes de volar, comprueba el espacio aéreo de tu zona.</div>'+
+      '<a class="btn sec" style="display:block;text-align:center;text-decoration:none" href="https://drones.enaire.es" target="_blank" rel="noopener">Abrir mapa de ENAIRE</a></div>';
+  }
+  $('refrescar').addEventListener('click',cargarHoy);
+
+  // ---------- DIARIO ----------
+  function pintarDiario(){
+    var v=load('vuelos').sort(function(a,b){return String(b.fecha).localeCompare(String(a.fecha))});
+    var tot=v.reduce(function(s,x){return s+(+x.min||0)},0);
+    $('d-resumen').textContent=v.length?(v.length+(v.length===1?' vuelo':' vuelos')+' · '+tot+' min en total'):'';
+    if(!v.length){$('d-lista').innerHTML='<div class="empty">Aún no has guardado ningún vuelo.</div>';return}
+    $('d-lista').innerHTML=v.map(function(x){
+      return '<div class="item"><div><div class="t">'+esc(x.lugar||'Sin lugar')+'</div>'+
+        '<div class="m">'+esc(fmtFecha(x.fecha))+' · '+esc(x.dron)+(x.min?' · '+esc(x.min)+' min':'')+'</div>'+
+        (x.notas?'<div class="m">'+esc(x.notas)+'</div>':'')+'</div>'+
+        '<button class="btn sec small" data-del="'+esc(x.id)+'" aria-label="Borrar vuelo">Borrar</button></div>';
+    }).join('');
+  }
+  $('d-fecha').value=nowLocalInput();
+  $('d-gps').addEventListener('click',async function(){
+    try{var p=await getPos();$('d-lugar').value=p.lat.toFixed(4)+', '+p.lng.toFixed(4)}
+    catch(e){alert(e.message)}
+  });
+  $('d-guardar').addEventListener('click',function(){
+    var v=load('vuelos');
+    v.push({id:String(Date.now()),fecha:$('d-fecha').value||nowLocalInput(),lugar:$('d-lugar').value.trim(),
+      dron:$('d-dron').value,min:$('d-min').value,notas:$('d-notas').value.trim()});
+    save('vuelos',v);
+    $('d-lugar').value='';$('d-min').value='';$('d-notas').value='';$('d-fecha').value=nowLocalInput();
+    pintarDiario();
+  });
+  $('d-lista').addEventListener('click',function(e){
+    var id=e.target.getAttribute&&e.target.getAttribute('data-del'); if(!id)return;
+    if(!confirm('¿Borrar este vuelo?'))return;
+    save('vuelos',load('vuelos').filter(function(x){return x.id!==id}));pintarDiario();
+  });
+  $('d-csv').addEventListener('click',function(){
+    var v=load('vuelos'); if(!v.length){alert('No hay vuelos para descargar.');return}
+    var q=function(s){return '"'+String(s==null?'':s).replace(/"/g,'""')+'"'};
+    var csv='fecha,lugar,dron,minutos,notas\n'+v.map(function(x){return [x.fecha,x.lugar,x.dron,x.min,x.notas].map(q).join(',')}).join('\n');
+    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    a.download='vuelos.csv';document.body.appendChild(a);a.click();a.remove();
+  });
+
+  // ---------- SPOTS ----------
+  var marcadores={}, pendiente=null, pendMarker=null;
+  function initMap(){
+    if(map)return;
+    var ult=null;try{ult=JSON.parse(localStorage.getItem('ultimaPos')||'null')}catch(e){}
+    var c=ult?[ult.lat,ult.lng]:[40.4,-3.7], z=ult?13:6;
+    map=L.map('map').setView(c,z);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      {maxZoom:18,attribution:'Tiles © Esri'}).addTo(map);
+    map.on('click',function(e){marcarPendiente(e.latlng.lat,e.latlng.lng)});
+    pintarSpots();
+  }
+  function marcarPendiente(lat,lng){
+    pendiente={lat:lat,lng:lng};
+    if(pendMarker)map.removeLayer(pendMarker);
+    pendMarker=L.circleMarker([lat,lng],{radius:9,color:'#B3261E',fillColor:'#B3261E',fillOpacity:.5}).addTo(map);
+    $('s-ayuda').textContent='Sitio marcado. Ponle nombre y guarda.';
+  }
+  function pintarSpots(){
+    if(!map)return;
+    Object.keys(marcadores).forEach(function(k){map.removeLayer(marcadores[k])});marcadores={};
+    var s=load('spots');
+    s.forEach(function(x){
+      marcadores[x.id]=L.marker([x.lat,x.lng]).addTo(map).bindPopup('<b>'+esc(x.nombre)+'</b>'+(x.nota?'<br>'+esc(x.nota):''));
+    });
+    $('s-lista').innerHTML=s.length?s.map(function(x){
+      return '<div class="item"><div><div class="t">'+esc(x.nombre)+'</div>'+(x.nota?'<div class="m">'+esc(x.nota)+'</div>':'')+'</div>'+
+        '<div style="display:flex;gap:6px"><button class="btn sec small" data-ir="'+esc(x.id)+'">Ver</button>'+
+        '<button class="btn sec small" data-bor="'+esc(x.id)+'" aria-label="Borrar spot">Borrar</button></div></div>';
+    }).join(''):'<div class="empty">Aún no tienes spots. Toca el mapa para añadir el primero.</div>';
+  }
+  $('s-gps').addEventListener('click',async function(){
+    try{var p=await getPos();initMap();map.setView([p.lat,p.lng],16);marcarPendiente(p.lat,p.lng)}
+    catch(e){alert(e.message)}
+  });
+  $('s-guardar').addEventListener('click',function(){
+    var n=$('s-nombre').value.trim();
+    if(!pendiente){alert('Primero toca el mapa o usa tu posición.');return}
+    if(!n){alert('Ponle un nombre al spot.');return}
+    var s=load('spots');
+    s.push({id:String(Date.now()),nombre:n,nota:$('s-nota').value.trim(),lat:pendiente.lat,lng:pendiente.lng});
+    save('spots',s);
+    $('s-nombre').value='';$('s-nota').value='';pendiente=null;
+    if(pendMarker){map.removeLayer(pendMarker);pendMarker=null}
+    $('s-ayuda').textContent='Toca el mapa para marcar el sitio, o usa tu posición.';
+    pintarSpots();
+  });
+  $('s-lista').addEventListener('click',function(e){
+    var ir=e.target.getAttribute&&e.target.getAttribute('data-ir');
+    var bor=e.target.getAttribute&&e.target.getAttribute('data-bor');
+    if(ir){var x=load('spots').filter(function(y){return y.id===ir})[0];
+      if(x){map.setView([x.lat,x.lng],16);marcadores[ir].openPopup();$('map').scrollIntoView({behavior:'smooth',block:'center'})}}
+    if(bor){if(!confirm('¿Borrar este spot?'))return;
+      save('spots',load('spots').filter(function(y){return y.id!==bor}));pintarSpots()}
+  });
+
+  // ---------- arranque ----------
+  pintarDiario();
+  cargarHoy();
+})();
+</script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import android.os.Vibrator
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.viewinterop.AndroidView
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.OnlineTileSourceBase
@@ -54,7 +55,7 @@ class AlertManager(private val ctx: Context) {
 @Composable
 fun DroneMap(me: Location?, drones: List<Drone>, radiusM: Float, modifier: Modifier = Modifier.fillMaxSize()) {
     AndroidView(
-        modifier = modifier,
+        modifier = modifier.clipToBounds(),
         factory = { c ->
             Configuration.getInstance().apply {
                 load(c, c.getSharedPreferences("osm", 0))
@@ -74,6 +75,9 @@ fun DroneMap(me: Location?, drones: List<Drone>, radiusM: Float, modifier: Modif
                 })
                 setMultiTouchControls(true)
                 controller.setZoom(16.0)
+                // Evita que el mapa se pinte fuera de su zona al moverlo
+                clipToOutline = true
+                clipChildren = true
             }
         },
         update = { map ->

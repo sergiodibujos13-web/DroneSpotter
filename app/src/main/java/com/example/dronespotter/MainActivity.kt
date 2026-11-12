@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -132,7 +133,7 @@ class MainActivity : ComponentActivity() {
                             Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Lista (${list.size})") })
                             Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Cuaderno") })
                         }
-                        Box(Modifier.weight(1f).fillMaxWidth()) {
+                        Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
                             when (tab) {
                                 0 -> DroneMap(me.value, list, threshold.floatValue)
                                 1 -> LazyColumn(
